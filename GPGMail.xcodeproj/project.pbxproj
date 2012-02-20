@@ -3511,13 +3511,14 @@
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = "Dependencies/**";
 				INFOPLIST_FILE = Plists/Info.plist;
-				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-ansi";
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional";
 				INFOPLIST_PREFIX_HEADER = version.h;
 				INFOPLIST_PREPROCESS = YES;
 				INSTALL_PATH = "$(HOME)/Library/Mail/Bundles";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "$(LIBRARY_SEARCH_PATHS)";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OBJROOT = ./build_i;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-force_flat_namespace",
@@ -3526,6 +3527,7 @@
 				);
 				PRODUCT_NAME = GPGMail;
 				SYMLINK_GPGMAIL = 1;
+				SYMROOT = ./build;
 				VALID_ARCHS = "x86_64 i386";
 				VERSION_INFO_PREFIX = "-traditional";
 				WRAPPER_EXTENSION = mailbundle;
@@ -3563,13 +3565,14 @@
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = "Dependencies/**";
 				INFOPLIST_FILE = Plists/Info.plist;
-				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-ansi";
+				INFOPLIST_OTHER_PREPROCESSOR_FLAGS = "-traditional";
 				INFOPLIST_PREFIX_HEADER = version.h;
 				INFOPLIST_PREPROCESS = YES;
 				INSTALL_PATH = "$(HOME)/Library/Mail/Bundles";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "$(LIBRARY_SEARCH_PATHS)";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
+				OBJROOT = ./build_i;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-force_flat_namespace",
@@ -3578,6 +3581,7 @@
 				);
 				PRODUCT_NAME = GPGMail;
 				SYMLINK_GPGMAIL = 1;
+				SYMROOT = ./build;
 				VALID_ARCHS = "x86_64 i386";
 				VERSION_INFO_PREFIX = "-traditional";
 				WRAPPER_EXTENSION = mailbundle;
