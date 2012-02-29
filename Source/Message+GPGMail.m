@@ -29,6 +29,7 @@
 
 #import <Libmacgpg/Libmacgpg.h>
 #import "NSObject+LPDynamicIvars.h"
+#import "CCLog.h"
 #import <MimePart.h>
 #import <MimeBody.h>
 #import <MessageStore.h>
@@ -47,11 +48,20 @@
         _messageFlags |= 0x00800000;
 }
 
-- (id)MAMessageBodyUpdatingFlags:(BOOL)arg1 {
-//    NSLog(@"[%@] message body updating flags: %@", [self subject], arg1 ? @"YES" : @"NO");
-    id ret = [self MAMessageBodyUpdatingFlags:arg1];
-//    NSLog(@"Message Body: %@", ret);
-    return ret;
+- (BOOL)isSigned {
+    return (_messageFlags & 0x00800000) || self.PGPSigned;
+}
+
+- (BOOL)isEncrypted {
+    return (_messageFlags & 0x00000008) || self.PGPEncrypted;
+}
+
+- (BOOL)isSMIMESigned {
+    return (_messageFlags & 0x00800000) && !self.PGPSigned;
+}
+
+- (BOOL)isSMIMEEncrypted {
+    return (_messageFlags & 0x00000008) && !self.PGPEncrypted;
 }
 
 - (void)setPGPEncrypted:(BOOL)isPGPEncrypted {
@@ -276,28 +286,24 @@
         [decryptedMessage fakeMessageFlagsIsEncrypted:self.PGPEncrypted isSigned:self.PGPSigned];
     
     // Only for test purpose, after the correct error to be displayed should be constructed.
-    if([errors count]) {
-//        NSLog(@"Current Monitor: %@", [ActivityMonitor currentMonitor]);
-//        NSLog(@"Current error: %@", errors);
+    if([errors count])
         [[ActivityMonitor currentMonitor] setError:[errors objectAtIndex:0]];
-//        [topPart setDecryptedMessageBody:nil isEncrypted:isEncrypted isSigned:isSigned error:[errors objectAtIndex:0]];
-    }
     
     
-//    NSLog(@"%@ Decrypted Message [%@]:\n\tisEncrypted: %@, isSigned: %@,\n\tisPartlyEncrypted: %@, isPartlySigned: %@\n\tsignatures: %@\n\terrors: %@",
-//          decryptedMessage, [decryptedMessage subject], decryptedMessage.PGPEncrypted ? @"YES" : @"NO", decryptedMessage.PGPSigned ? @"YES" : @"NO",
-//          decryptedMessage.PGPPartlyEncrypted ? @"YES" : @"NO", decryptedMessage.PGPPartlySigned ? @"YES" : @"NO", decryptedMessage.PGPSignatures, decryptedMessage.PGPErrors);
-//    
-//    NSLog(@"%@ Message [%@]:\n\tisEncrypted: %@, isSigned: %@,\n\tisPartlyEncrypted: %@, isPartlySigned: %@\n\tsignatures: %@\n\terrors: %@\n\tattachments: %@",
-//          self, [self subject], isEncrypted ? @"YES" : @"NO", isSigned ? @"YES" : @"NO",
-//          isPartlyEncrypted ? @"YES" : @"NO", isPartlySigned ? @"YES" : @"NO", signatures, errors, pgpAttachments);
+    DebugLog(@"%@ Decrypted Message [%@]:\n\tisEncrypted: %@, isSigned: %@,\n\tisPartlyEncrypted: %@, isPartlySigned: %@\n\tsignatures: %@\n\terrors: %@",
+          decryptedMessage, [decryptedMessage subject], decryptedMessage.PGPEncrypted ? @"YES" : @"NO", decryptedMessage.PGPSigned ? @"YES" : @"NO",
+          decryptedMessage.PGPPartlyEncrypted ? @"YES" : @"NO", decryptedMessage.PGPPartlySigned ? @"YES" : @"NO", decryptedMessage.PGPSignatures, decryptedMessage.PGPErrors);
+    
+    DebugLog(@"%@ Message [%@]:\n\tisEncrypted: %@, isSigned: %@,\n\tisPartlyEncrypted: %@, isPartlySigned: %@\n\tsignatures: %@\n\terrors: %@\n\tattachments: %@",
+          self, [self subject], isEncrypted ? @"YES" : @"NO", isSigned ? @"YES" : @"NO",
+          isPartlyEncrypted ? @"YES" : @"NO", isPartlySigned ? @"YES" : @"NO", signatures, errors, pgpAttachments);
     
 #warning Uncomment once number of attachments is implemented.
     // Fix the number of attachments, this time for real!
     // Uncomment once completely implemented.
-    [[self messageStore] setNumberOfAttachments:0 isSigned:isSigned isEncrypted:isEncrypted forMessage:self];
-    if(decryptedMessage)
-        [[decryptedMessage messageStore] setNumberOfAttachments:0 isSigned:isSigned isEncrypted:isEncrypted forMessage:decryptedMessage];
+    //[[self messageStore] setNumberOfAttachments:0 isSigned:isSigned isEncrypted:isEncrypted forMessage:self];
+    //if(decryptedMessage)
+    //    [[decryptedMessage messageStore] setNumberOfAttachments:0 isSigned:isSigned isEncrypted:isEncrypted forMessage:decryptedMessage];
     // Set PGP Info collected so this information is not overwritten.
     self.PGPInfoCollected = YES;
 }
@@ -306,7 +312,6 @@
     [self removeIvars];
 }
 
-#warning Verify what to do if components are missing!
 - (BOOL)shouldBePGPProcessed {
     // Components are missing? What to do...
 //    if([[GPGMailBundle sharedInstance] componentsMissing])
@@ -331,8 +336,8 @@
 
 - (BOOL)shouldCreateSnippetWithData:(NSData *)data {
     // CreatePreviewSnippets is set? Always return true.
-    NSLog(@"Create Preview snippets: %@", [[GPGOptions sharedOptions] boolForKey:@"CreatePreviewSnippets"] ? @"YES" : @"NO");
-    NSLog(@"User Selected Message: %@", [[self getIvar:@"UserSelectedMessage"] boolValue] ? @"YES" : @"NO");
+    DebugLog(@"Create Preview snippets: %@", [[GPGOptions sharedOptions] boolForKey:@"CreatePreviewSnippets"] ? @"YES" : @"NO");
+    DebugLog(@"User Selected Message: %@", [[self getIvar:@"UserSelectedMessage"] boolValue] ? @"YES" : @"NO");
     
     if([[GPGOptions sharedOptions] boolForKey:@"CreatePreviewSnippets"] ||
        [[self getIvar:@"UserSelectedMessage"] boolValue])
@@ -362,13 +367,13 @@
         NSAssert(key != nil, @"No key found for keyID: %@", keyID);
         if([gpgc isPassphraseForKeyInCache:key]) {
             passphraseInCache = YES;
-            NSLog(@"Passphrase found in cache!");
+            DebugLog(@"Passphrase found in cache!");
             break;
         }
     }
     [keyIDs release];
-    
-    NSLog(@"Passphrase in cache? %@", passphraseInCache ? @"YES" : @"NO");
+    [gpgc release];
+    DebugLog(@"Passphrase in cache? %@", passphraseInCache ? @"YES" : @"NO");
     
     return passphraseInCache;
 }

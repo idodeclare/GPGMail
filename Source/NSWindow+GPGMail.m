@@ -1,4 +1,4 @@
-/* GPGKeyDownload.h created by dave on Sat 23-Aug-2004 */
+/* NSWindow+GPGMail.m created by Lukas Pitschl (@lukele) on Mon 27-Feb-2012 */
 
 /*
  * Copyright (c) 2000-2011, GPGTools Project Team <gpgtools-devel@lists.gpgtools.org>
@@ -27,43 +27,26 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <AppKit/AppKit.h>
-#import <Libmacgpg/Libmacgpg.h>
-#import "GPGMailBundle.h"
+#import "NSWindow+GPGMail.h"
 
-extern NSString *GPGDidFindKeysNotification;
+@implementation NSWindow (GPGMail)
 
-@interface GPGKeyDownload : NSWindowController {
-	IBOutlet NSTextField *titleField;
-	IBOutlet NSTabView *tabView;
-	IBOutlet NSTextField *subtitleField;
-	IBOutlet NSOutlineView *outlineView;
-	IBOutlet NSProgressIndicator *searchProgressIndicator;
-	IBOutlet NSTextField *searchProgressField;
-	IBOutlet NSProgressIndicator *importProgressIndicator;
-	IBOutlet NSTextField *importProgressField;
-	IBOutlet NSButton *importButton;
-	IBOutlet NSFormCell *emailCell;
-	IBOutlet NSComboBox *serverComboBox;
-	IBOutlet NSButton *searchButton;
-	NSArray *foundKeys;
-	NSMutableSet *selectedKeys;
-//	GPGContext *context;
-	BOOL isSearching;
-	BOOL isImporting;
-	BOOL cancelled;
-	NSArray *serverList;
-	NSMutableCharacterSet *validEmailAddressCharset;
-	NSArray *defaultServerList;
+- (void)addAccessoryView:(NSView *)accessoryView {
+    NSView *themeFrame = [[self contentView] superview];
+    NSRect c = [themeFrame frame];	// c for "container"
+    NSRect aV = [accessoryView frame];	// aV for "accessory view"
+    // 4 point from the top, 6.0px from the very right.
+    //NSPoint offset = NSMakePoint(6.0f, 4.0f);
+    NSPoint offset = NSMakePoint(-0.0f, -0.0f);
+    
+    NSRect newFrame = NSMakeRect(
+                                 c.size.width - aV.size.width - offset.x,	// x position
+                                 c.size.height - aV.size.height - offset.y,	// y position
+                                 aV.size.width,	// width
+                                 aV.size.height);	// height
+    
+    [accessoryView setFrame:newFrame];
+    [themeFrame addSubview:accessoryView];
 }
-
-+ (id)sharedInstance;
-
-- (IBAction)gpgSearchKeys:(id)sender;
-- (IBAction)search:(id)sender;
-- (IBAction)cancel:(id)sender;
-- (IBAction)import:(id)sender;
-
-- (void)searchKeysMatchingPatterns:(NSArray *)patterns;
 
 @end

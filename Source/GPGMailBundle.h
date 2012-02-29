@@ -103,6 +103,8 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
 
 @property BOOL warnedAboutMissingPrivateKeys;
 
+- (NSString *)buildNumberDescription;
+
 @property (nonatomic, retain) NSArray *disabledGroups;
 @property (nonatomic, retain) NSArray *disabledUserMappedKeys;
 @property (readonly) GPGErrorCode gpgStatus;
@@ -126,7 +128,6 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
 
 - (BOOL)canKeyBeUsedForEncryption:(GPGKey *)key;
 - (BOOL)canKeyBeUsedForSigning:(GPGKey *)key;
-- (BOOL)canUserIDBeUsed:(GPGUserID *)userID;
 - (id)locale;
 
 - (NSMutableSet *)publicKeyListForAddresses:(NSArray *)recipients;
@@ -163,7 +164,7 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
 /**
  Checks a list of keys and returns the newest and most trusted key.
  */
-- (GPGKey *)bestKeyOfPublicKeys:(NSSet *)keys;
+- (GPGKey *)bestKeyOfUserIDs:(NSSet *)userIDs;
 
 /**
  Returns all keys which were mapped by the user (email -> fingerprint).

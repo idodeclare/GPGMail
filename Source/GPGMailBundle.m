@@ -41,7 +41,6 @@
 #import "NSString+GPGMail.h"
 //#import "GPGDefaults.h"
 #import "GPGMailPreferences.h"
-#import "GPGKeyDownload.h"
 #import "GPGProgressIndicatorController.h"
 #import "GPGMailBundle.h"
 #import "GPGVersionComparator.h"
@@ -73,12 +72,6 @@ static BOOL gpgMailWorks = NO;
 @synthesize publicGPGKeys, secretGPGKeys, allGPGKeys, updater, accountExistsForSigning, secretGPGKeysByEmail = _secretGPGKeysByEmail, 
             publicGPGKeysByEmail = _publicGPGKeysByEmail, gpgc, publicGPGKeysByID = _publicGPGKeysByID, disabledGroups = _disabledGroups,
             disabledUserMappedKeys = _disabledUserMappedKeys, gpgStatus;
-
-+ (void)load {
-	GPGMailLoggingLevel = 1; //[[GPGOptions sharedOptions] integerForKey:@"GPGMailDebug"];
-    NSLog(@"Logging Level: %d", GPGMailLoggingLevel);
-	[[NSExceptionHandler defaultExceptionHandler] setExceptionHandlingMask:NSLogOtherExceptionMask | NSLogTopLevelExceptionMask];
-}
 
 /**
  This method replaces all of Mail's methods which are necessary for GPGMail
@@ -116,13 +109,6 @@ static BOOL gpgMailWorks = NO;
                              @"_saveThreadShouldCancel", 
                              nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
-                            @"ComposeHeaderView", @"class",
-                            @"ComposeHeaderView_GPGMail", @"gpgMailClass",
-                            [NSArray arrayWithObjects:
-                             @"_calculateSecurityFrame:",
-                             @"awakeFromNib",
-                             nil], @"selectors", nil],
-                           [NSDictionary dictionaryWithObjectsAndKeys:
                             @"HeadersEditor", @"class",
                             @"HeadersEditor_GPGMail", @"gpgMailClass",
                             [NSArray arrayWithObjects:
@@ -130,17 +116,14 @@ static BOOL gpgMailWorks = NO;
                              @"_updateFromAndSignatureControls:", 
                              @"changeFromHeader:", 
                              @"init", 
-                             @"dealloc", nil], @"selectors", nil],
+                             @"dealloc",
+                             @"_updateSecurityStateInBackgroundForRecipients:sender:", 
+                             @"awakeFromNib", nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
                             @"MessageAttachment", @"class",
                             @"MessageAttachment_GPGMail", @"gpgMailClass",
                             [NSArray arrayWithObjects:
                              @"filename", nil], @"selectors", nil],
-                           [NSDictionary dictionaryWithObjectsAndKeys:
-                            @"OptionalView", @"class",
-                            @"OptionalView_GPGMail", @"gpgMailClass",
-                            [NSArray arrayWithObjects:
-                             @"widthIncludingOptionSwitch:", nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
                             @"MailDocumentEditor", @"class",
                             @"MailDocumentEditor_GPGMail", @"gpgMailClass",
@@ -169,14 +152,11 @@ static BOOL gpgMailWorks = NO;
                              @"decodeTextPlainWithContext:",
                              @"decodeTextHtmlWithContext:",
                              @"decodeApplicationOctet_streamWithContext:",
-                             //                @"copySignerLabels",
-                             //                @"copyMessageSigners",
                              @"isSigned",
                              @"isMimeSigned",
                              @"isMimeEncrypted",
                              @"usesKnownSignatureProtocol",
                              @"clearCachedDecryptedMessageBody",
-                             @"setDecryptedMessageBody:isEncrypted:isSigned:error:",
                              nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
                             @"MimeBody", @"class",
@@ -184,17 +164,9 @@ static BOOL gpgMailWorks = NO;
                              @"isSignedByMe",
                              @"_isPossiblySignedOrEncrypted", nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
-                            @"Message", @"class",
-                            [NSArray arrayWithObjects:
-                             @"messageBodyUpdatingFlags:", nil], @"selectors", nil],
-                           [NSDictionary dictionaryWithObjectsAndKeys:
                             @"MailAccount", @"class",
                             [NSArray arrayWithObjects:
                              @"accountExistsForSigning", nil], @"selectors", nil],
-                           //                           [NSDictionary dictionaryWithObjectsAndKeys:
-                           //                            @"Message", @"class",
-                           //                            [NSArray arrayWithObjects:
-                           //                             @"messageBodyUpdatingFlags:", nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
                             @"NSPreferences", @"class",
                             [NSArray arrayWithObjects:
@@ -213,16 +185,16 @@ static BOOL gpgMailWorks = NO;
         if([swizzleInfo objectForKey:@"gpgMailClass"]) {
             Class gpgMailClass = NSClassFromString([swizzleInfo objectForKey:@"gpgMailClass"]);
             if(!mailClass) {
-                NSLog(@"WARNING: Class %@ doesn't exist. GPGMail might behave weirdly!", [swizzleInfo objectForKey:@"class"]);
+                DebugLog(@"WARNING: Class %@ doesn't exist. GPGMail might behave weirdly!", [swizzleInfo objectForKey:@"class"]);
                 continue;
             }
             if(!gpgMailClass) {
-                NSLog(@"WARNING: Class %@ doesn't exist. GPGMail might behave weirdly!", [swizzleInfo objectForKey:@"gpgMailClass"]);
+                DebugLog(@"WARNING: Class %@ doesn't exist. GPGMail might behave weirdly!", [swizzleInfo objectForKey:@"gpgMailClass"]);
                 continue;
             }
             [mailClass jrlp_addMethodsFromClass:gpgMailClass error:&error];
             if(error)
-                NSLog(@"[DEBUG] %s Error: %@", __PRETTY_FUNCTION__, error);
+                DebugLog(@"[DEBUG] %s Error: %@", __PRETTY_FUNCTION__, error);
             error = nil;
         }
         for(NSString *method in [swizzleInfo objectForKey:@"selectors"]) {
@@ -234,7 +206,7 @@ static BOOL gpgMailWorks = NO;
                 // Try swizzling as class method on error.
                 [mailClass jrlp_swizzleClassMethod:NSSelectorFromString(method) withClassMethod:NSSelectorFromString(gpgMethod) error:&error];
                 if(error)
-                    NSLog(@"[DEBUG] %s Class Error: %@", __PRETTY_FUNCTION__, error);
+                    DebugLog(@"[DEBUG] %s Class Error: %@", __PRETTY_FUNCTION__, error);
             }
         }
     }
@@ -302,6 +274,9 @@ static BOOL gpgMailWorks = NO;
     [(NSImage *)[[NSImage alloc] initByReferencingFile:[myBundle pathForImageResource:@"GreenDot"]] setName:@"GreenDot"];
     [(NSImage *)[[NSImage alloc] initByReferencingFile:[myBundle pathForImageResource:@"YellowDot"]] setName:@"YellowDot"];
     [(NSImage *)[[NSImage alloc] initByReferencingFile:[myBundle pathForImageResource:@"RedDot"]] setName:@"RedDot"];
+    
+    [(NSImage *)[[NSImage alloc] initByReferencingFile:[myBundle pathForImageResource:@"menu-arrow"]] setName:@"MenuArrow"];
+    [(NSImage *)[[NSImage alloc] initByReferencingFile:[myBundle pathForImageResource:@"menu-arrow-white"]] setName:@"MenuArrowWhite"];
 }
 
 + (BOOL)hasPreferencesPanel {
@@ -366,14 +341,14 @@ static BOOL gpgMailWorks = NO;
     self.gpgStatus = (GPGErrorCode)[GPGController testGPG];
     switch (gpgStatus) {
         case GPGErrorNotFound:
-            NSLog(@"DEBUG: checkGPG - GPGErrorNotFound");
+            DebugLog(@"DEBUG: checkGPG - GPGErrorNotFound");
             break;
         case GPGErrorConfigurationError:
-            NSLog(@"DEBUG: checkGPG - GPGErrorConfigurationError");
+            DebugLog(@"DEBUG: checkGPG - GPGErrorConfigurationError");
         case GPGErrorNoError:
             return YES;
         default:
-            NSLog(@"DEBUG: checkGPG - %i", gpgStatus);
+            DebugLog(@"DEBUG: checkGPG - %i", gpgStatus);
             break;
     }
     return NO;
@@ -402,6 +377,10 @@ static BOOL gpgMailWorks = NO;
 		if (defaultsDictionary) {
 			[[GPGOptions sharedOptions] registerDefaults:defaultsDictionary];
 		}
+        
+        GPGMailLoggingLevel = [[GPGOptions sharedOptions] integerForKey:@"DebugLog"];
+        NSLog(@"Debug Log enabled: %@", [[GPGOptions sharedOptions] integerForKey:@"DebugLog"] > 0 ? @"YES" : @"NO");
+        [[NSExceptionHandler defaultExceptionHandler] setExceptionHandlingMask:NSLogOtherExceptionMask | NSLogTopLevelExceptionMask];
         
         gpgMailWorks = [self checkGPG];
         [self finishInitialization];
@@ -438,6 +417,17 @@ static BOOL gpgMailWorks = NO;
 
 - (NSString *)versionDescription {
 	return [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"VERSION: %@", @"GPGMail", [NSBundle bundleForClass:[self class]], "Description of version prefixed with <Version: >"), [self version]];
+}
+
+- (NSString *)buildNumberDescription {
+    NSString *buildNumber = nil;
+    @try {
+        buildNumber = [[[[self class] bundleVersion] componentsSeparatedByString:@" "] objectAtIndex:0];
+    }
+    @catch (NSException *exception) {
+        buildNumber = @"";
+    }
+    return [NSString stringWithFormat:@"Build: %@", buildNumber];
 }
 
 - (NSString *)version {
@@ -529,11 +519,9 @@ static BOOL gpgMailWorks = NO;
 - (void)updateGPGKeys:(NSObject <EnumerationList> *)keys {
     if (!gpgMailWorks) return;
     
-	NSLog(@"updateGPGKeys: start");
-	if (![updateLock tryLock]) {
-		NSLog(@"updateGPGKeys: tryLock return");
+	if (![updateLock tryLock])
 		return;
-	}
+	
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	
 	@try {
@@ -582,17 +570,15 @@ static BOOL gpgMailWorks = NO;
         self.publicGPGKeysByEmail = nil;
         
 	} @catch (GPGException *e) {
-		NSLog(@"updateGPGKeys: failed - %@ (ErrorText: %@)", e, e.gpgTask.errText);
+		DebugLog(@"updateGPGKeys: failed - %@ (ErrorText: %@)", e, e.gpgTask.errText);
 	} @catch (NSException *e) {
-		NSLog(@"updateGPGKeys: failed - %@", e);
+		DebugLog(@"updateGPGKeys: failed - %@", e);
 	} @finally {
 		[pool drain];
 		[updateLock unlock];
 	}
 	
     [(NSNotificationCenter *)[NSNotificationCenter defaultCenter] postNotificationName:GPGMailKeyringUpdatedNotification object:self];
-    
-	NSLog(@"updateGPGKeys: end");
 }
 
 
@@ -837,13 +823,6 @@ static BOOL gpgMailWorks = NO;
     // non-expired, non-disabled, non-revoked and be used for encryption.
     // We don't care about ownerTrust, validity
 	return key.canAnySign && key.status < GPGKeyStatus_Invalid;
-}
-
-- (BOOL)canUserIDBeUsed:(GPGUserID *)userID {
-	// We suppose that key is OK
-	// We don't care about validity
-#warning FIXME: Secret keys are never marked as revoked! Check expired/disabled/invalid
-	return (!userID.revoked && !userID.invalid);
 }
 
 - (id)locale {
