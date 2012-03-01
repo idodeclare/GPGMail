@@ -41,7 +41,6 @@
 #import "NSString+GPGMail.h"
 //#import "GPGDefaults.h"
 #import "GPGMailPreferences.h"
-#import "GPGProgressIndicatorController.h"
 #import "GPGMailBundle.h"
 #import "GPGVersionComparator.h"
 
@@ -132,6 +131,11 @@ static BOOL gpgMailWorks = NO;
                              @"dealloc",
                              @"windowForMailFullScreen",
                              @"backEnd:didCancelMessageDeliveryForEncryptionError:",
+                             nil], @"selectors", nil],
+                           [NSDictionary dictionaryWithObjectsAndKeys:
+                            @"NSWindow", @"class",
+                            [NSArray arrayWithObjects:
+                             @"toggleFullScreen:",
                              nil], @"selectors", nil],
                            [NSDictionary dictionaryWithObjectsAndKeys:
                             @"MessageContentController", @"class",
