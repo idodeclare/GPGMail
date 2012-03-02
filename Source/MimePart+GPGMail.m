@@ -336,6 +336,23 @@
     return [self MADecodeApplicationOctet_streamWithContext:ctx];
 } 
 
+- (BOOL)isPGPMimeEncryptedAttachment {
+    // application/pgp-encrypted is also considered to be an attachment.
+    if([[self dispositionParameterForKey:@"filename"] isEqualToString:@"encrypted.asc"] || 
+       [self isType:@"application" subtype:@"pgp-encrypted"])
+        return YES;
+    
+    return NO;
+}
+
+- (BOOL)isPGPMimeSignatureAttachment {
+    if([self isType:@"application" subtype:@"pgp-signature"])
+        return YES;
+    
+    return NO;
+}
+
+
 - (id)decodePGPEncryptedAttachment {
     if(self.PGPDecryptedData)
         return [self.PGPDecryptedData length] != 0 ? self.PGPDecryptedData : [self MADecodeApplicationOctet_streamWithContext:nil];
@@ -486,7 +503,7 @@
     MFError *error = [[(MimeBody *)decryptedMimeBody topLevelPart] valueForKey:@"_smimeError"];
     if(error)
         [[ActivityMonitor currentMonitor] setError:error];
-    [newMessage setIvar:@"PGPEarlyAlphaFuckedUpEncrypted" value:[NSNumber numberWithBool:YES]];
+    [decryptedMimeBody setIvar:@"PGPEarlyAlphaFuckedUpEncrypted" value:[NSNumber numberWithBool:YES]];
     self.PGPEncrypted = YES;
     self.PGPSigned = isSigned;
     self.PGPError = error;
@@ -501,8 +518,6 @@
     // For the security header to correctly show the signatures,
     // the message has to be flagged as specially encrypted.
     [[self mimeBody] setIvar:@"PGPEarlyAlphaFuckedUpEncrypted" value:[NSNumber numberWithBool:YES]];
-    // For some reason, these messages are super complicated, so we store the messageBody ourselves.
-    [[(MimeBody *)[self mimeBody] message] setIvar:@"PGPEarlyAlphaFuckedUpEncryptedMessageBody" value:decryptedMimeBody];
 
     return decryptedMimeBody;
 }
@@ -637,9 +652,11 @@
     }
     else {
         GPGErrorCode errorCode = GPGErrorNoError;
+        GPGSignature *signatureWithError = nil;
         for(GPGSignature *signature in gpgc.signatures) {
             if(signature.status != GPGErrorNoError) {
                 errorCode = signature.status;
+                signatureWithError = signature;
                 break;
             }
         }
@@ -647,15 +664,21 @@
         
         switch (errorCode) {
             case GPGErrorNoPublicKey:
-                title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_PUBKEY_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
-                message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_PUBKEY_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
+                title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_NO_PUBKEY_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
+                message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_NO_PUBKEY_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
+                message = [NSString stringWithFormat:message, signatureWithError.fingerprint];
                 break;
             
             case GPGErrorUnknownAlgorithm:
                 title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_ALGORITHM_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
                 message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_ALGORITHM_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
                 break;
-
+            
+            case GPGErrorCertificateRevoked:
+                title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_REVOKED_CERTIFICATE_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
+                message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_REVOKED_CERTIFICATE_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
+                message = [NSString stringWithFormat:message, signatureWithError.fingerprint];
+                break;
 #warning SignatureExpired, KeyExpired, Certificate revoked are only warnings (Should be displayed in the Security header, not as an actual error.
             
             case GPGErrorBadSignature:
@@ -664,6 +687,9 @@
                 break;
             
             default:
+                // Set errorFound to 0 for Key expired and signature expired.
+                // Those are warnings, not actually errors. Should only be displayed in the signature view.
+                errorFound = 0;
                 break;
         }
     }
@@ -1349,6 +1375,7 @@
 		}
     }
     @catch(NSException *e) {
+#warning TODO - use correct error mesage.
         [self failedToSignForSender:@"t@t.com" gpgErrorCode:1];
 //        DebugLog(@"[DEBUG] %s encryption error: %@", __PRETTY_FUNCTION__, e);
         // TODO: Add encryption error handling. (Re-use the dialogs shown for S/MIME
@@ -1411,11 +1438,16 @@
     // Eventually add warning for this.
     gpgc.trustAllKeys = YES;
     gpgc.printVersion = YES;
+    
 	[gpgc setSignerKey:keyForSigning];
-	
+    
+    GPGHashAlgorithm hashAlgorithm = 0;
+	NSString *hashAlgorithmName = nil;
+    
     @try {
         *signatureData = [gpgc processData:data withEncryptSignMode:GPGDetachedSign recipients:nil hiddenRecipients:nil];
-       
+        hashAlgorithm = gpgc.hashAlgorithm;
+        
 		if (gpgc.error) {
 			@throw gpgc.error;
 		}
@@ -1434,13 +1466,18 @@
     @catch(NSException *e) {
 		[self failedToSignForSender:sender gpgErrorCode:1];
         return nil;
-//      DebugLog(@"[DEBUG] %s sign error: %@", __PRETTY_FUNCTION__, e);
-//		@throw e;
     }
     @finally {
         [gpgc release];
     }
 
+    if(hashAlgorithm) {
+        hashAlgorithmName = [GPGController nameForHashAlgorithm:hashAlgorithm];
+    }
+    else {
+        hashAlgorithmName = @"sha1";
+    }
+    
     // This doesn't work for PGP Inline,
     // But actually the signature could be created inline
     // Just the same way the pgp/signature is created and later
@@ -1449,7 +1486,7 @@
     [topPart setType:@"multipart"];
     [topPart setSubtype:@"signed"];
     // TODO: sha1 the right algorithm?
-    [topPart setBodyParameter:@"pgp-sha1" forKey:@"micalg"];
+    [topPart setBodyParameter:[NSString stringWithFormat:@"pgp-%@", hashAlgorithmName] forKey:@"micalg"];
     [topPart setBodyParameter:@"application/pgp-signature" forKey:@"protocol"];
 
     MimePart *signaturePart = [[MimePart alloc] init];

@@ -60,7 +60,7 @@
 				<nil key="NSViewClass"/>
 				<nil key="NSUserInterfaceItemIdentifier"/>
 				<object class="NSView" key="NSWindowView" id="791390698">
-					<reference key="NSNextResponder"/>
+					<nil key="NSNextResponder"/>
 					<int key="NSvFlags">256</int>
 					<object class="NSMutableArray" key="NSSubviews">
 						<bool key="EncodedWithXMLCoder">YES</bool>
@@ -750,7 +750,6 @@ IEdQRyBTY2hsw7xzc2VsYnVuZCBoZXJ1bnRlci4</string>
 						</object>
 					</object>
 					<string key="NSFrameSize">{486, 278}</string>
-					<reference key="NSSuperview"/>
 					<reference key="NSNextKeyView" ref="1007890871"/>
 					<string key="NSReuseIdentifierKey">_NS:207</string>
 				</object>

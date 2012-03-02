@@ -40,9 +40,16 @@
     if([self ivarExists:@"SetEncrypt"]) {
         encryptIfPossible = [[self getIvar:@"SetEncrypt"] boolValue];
     }
-    if([self ivarExists:@"ForceEncrypt"])
-        encryptIfPossible = [[self getIvar:@"ForceEncrypt"] boolValue];
     
+    // Force Encrypt contains the user choice.
+    // It overrides SetEncrypt, which is checked when
+    // displaying the correct image, so it has to
+    // be reset, if ForceSign is set, otherwise the wrong
+    // image could be shown.
+    if([self ivarExists:@"ForceEncrypt"]) {
+        encryptIfPossible = [[self getIvar:@"ForceEncrypt"] boolValue];
+        [self setIvar:@"SetEncrypt" value:[NSNumber numberWithBool:encryptIfPossible]];
+    }
     // If SetEncrypt and CanEncrypt don't match, use CanEncrypt,
     // since that's more important.
     if(![[self getIvar:@"EncryptIsPossible"] boolValue])
@@ -58,8 +65,15 @@
         signIfPossible = [[self getIvar:@"SetSign"] boolValue];
     }
 
-    if([self ivarExists:@"ForceSign"])
+    // Force Sign contains the user choice.
+    // It overrides SetSign, which is checked when
+    // displaying the correct image, so it has to
+    // be reset, if ForceSign is set, otherwise the wrong
+    // image could be shown.
+    if([self ivarExists:@"ForceSign"]) {
         signIfPossible = [[self getIvar:@"ForceSign"] boolValue];
+        [self setIvar:@"SetSign" value:[NSNumber numberWithBool:signIfPossible]];
+    }
     
     // If SetSign and CanSign don't match, use CanSign,
     // since that's more important.
@@ -169,14 +183,13 @@
 			
 			// Display "our" error message.
 			NSBundle *messagesFramework = [NSBundle bundleWithIdentifier:@"com.apple.MessageFramework"];
-			NSString *localizedDescription = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"SMIME_CANT_SIGN_MESSAGE", @"Delayed", messagesFramework, @""), [@"sender" gpgNormalizedEmail]];
+			NSString *localizedDescription = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"SMIME_CANT_SIGN_MESSAGE", @"Delayed", messagesFramework, @""), [((ComposeBackEnd *)self).sender gpgNormalizedEmail]];
 			NSString *titleDescription = NSLocalizedStringFromTableInBundle(@"SMIME_CANT_SIGN_TITLE", @"Delayed", messagesFramework, @"");
 			MFError *error = [MFError errorWithDomain:@"MFMessageErrorDomain" code:1036 localizedDescription:nil title:titleDescription
 											  helpTag:nil userInfo:[NSDictionary dictionaryWithObjectsAndKeys:localizedDescription,
 																	@"NSLocalizedDescription", titleDescription, @"_MFShortDescription", nil]];
 
-			[(MailDocumentEditor *)[(ComposeBackEnd *)self delegate] backEnd:self didCancelMessageDeliveryForEncryptionError:error];
-			
+			[self performSelectorOnMainThread:@selector(didCancelMessageDeliveryForError:) withObject:error waitUntilDone:NO];
 		}
         return nil;
 	}
@@ -246,6 +259,11 @@
         [GMSecurityHistory addEntryForSender:((ComposeBackEnd *)self).sender recipients:[((ComposeBackEnd *)self) allRecipients] securityMethod:GPGMAIL_SECURITY_METHOD_OPENPGP didSign:shouldPGPSign didEncrypt:shouldPGPEncrypt];
     
     return outgoingMessage;
+}
+
+
+- (void)didCancelMessageDeliveryForError:(NSError *)error {
+    [(MailDocumentEditor *)[(ComposeBackEnd *)self delegate] backEnd:self didCancelMessageDeliveryForEncryptionError:error];
 }
 
 - (void)_addGPGFlaggedStringsToHeaders:(NSMutableDictionary *)headers forEncrypting:(BOOL)forEncrypting forSigning:(BOOL)forSigning {
@@ -600,7 +618,7 @@
 - (id)MARecipientsThatHaveNoKeyForEncryption {
     GPGMAIL_SECURITY_METHOD securityMethod = self.guessedSecurityMethod;
     if(self.securityMethod)
-        securityMethod = self.guessedSecurityMethod;
+        securityMethod = self.securityMethod;
     
     if(securityMethod == GPGMAIL_SECURITY_METHOD_SMIME)
         return [self MARecipientsThatHaveNoKeyForEncryption];
