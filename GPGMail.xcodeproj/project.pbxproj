@@ -3273,7 +3273,6 @@
 				);
 				PRODUCT_NAME = GPGMail;
 				SYMLINK_GPGMAIL = 1;
-				SYMROOT = ./build;
 				VALID_ARCHS = "x86_64 i386";
 				WRAPPER_EXTENSION = mailbundle;
 			};
@@ -3403,7 +3402,6 @@
 					dynamic_lookup,
 				);
 				SDKROOT = macosx;
-				SYMROOT = build;
 				VALID_ARCHS = "x86_64 i386";
 			};
 			name = Release;
