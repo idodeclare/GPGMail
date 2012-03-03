@@ -3265,7 +3265,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "$(LIBRARY_SEARCH_PATHS)";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
-				OBJROOT = ./build_i;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-force_flat_namespace",
@@ -3313,7 +3312,6 @@
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "$(LIBRARY_SEARCH_PATHS)";
 				MACOSX_DEPLOYMENT_TARGET = 10.7;
-				OBJROOT = ./build_i;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-force_flat_namespace",
@@ -3322,7 +3320,6 @@
 				);
 				PRODUCT_NAME = GPGMail;
 				SYMLINK_GPGMAIL = 1;
-				SYMROOT = ./build;
 				VALID_ARCHS = "x86_64 i386";
 				WRAPPER_EXTENSION = mailbundle;
 			};
@@ -3365,7 +3362,6 @@
 					dynamic_lookup,
 				);
 				SDKROOT = macosx;
-				SYMROOT = build;
 				VALID_ARCHS = "x86_64 i386";
 			};
 			name = Debug;
