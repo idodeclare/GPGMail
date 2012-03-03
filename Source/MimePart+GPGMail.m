@@ -681,6 +681,17 @@
                 break;
 #warning SignatureExpired, KeyExpired, Certificate revoked are only warnings (Should be displayed in the Security header, not as an actual error.
             
+            case GPGErrorKeyExpired:
+                title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_KEY_EXPIRED_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
+                message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_KEY_EXPIRED_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
+                message = [NSString stringWithFormat:message, signatureWithError.fingerprint];
+                break;
+            
+            case GPGErrorSignatureExpired:
+                title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_SIGNATURE_EXPIRED_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
+                message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_SIGNATURE_EXPIRED_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
+                break;
+                
             case GPGErrorBadSignature:
                 title = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_BAD_SIGNATURE_ERROR_TITLE", @"GPGMail", gpgMailBundle, @"");
                 message = NSLocalizedStringFromTableInBundle(@"MESSAGE_BANNER_PGP_VERIFY_BAD_SIGNATURE_ERROR_MESSAGE", @"GPGMail", gpgMailBundle, @"");
@@ -894,10 +905,18 @@
     self.PGPSigned = YES;
     self.PGPVerified = self.PGPError ? NO : YES;
     self.PGPSignatures = signatures;
-    self.PGPVerifiedContent = [self stripSignatureFromContent:[[signedData stringByGuessingEncoding] markupString]];
+    if([self hasPGPInlineSignature:signedData])
+        self.PGPVerifiedContent = [self stripSignatureFromContent:[[signedData stringByGuessingEncoding] markupString]];
     self.PGPVerifiedData = signedData;
     
     [gpgc release];
+}
+
+- (BOOL)hasPGPInlineSignature:(NSData *)data {
+    NSData *inlineSignatureMarkerHead = [PGP_SIGNED_MESSAGE_BEGIN dataUsingEncoding:NSUTF8StringEncoding];
+    if([data rangeOfData:inlineSignatureMarkerHead options:0 range:NSMakeRange(0, [data length])].location != NSNotFound)
+        return YES;
+    return NO;
 }
 
 - (void)MAVerifySignature {
