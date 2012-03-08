@@ -34,6 +34,7 @@
 #import "NSArray+Functional.h"
 #import "NSObject+LPDynamicIvars.h"
 #import "GPGFlaggedString.h"
+#import "GPGException+GPGMail.h"
 #import "MimePart+GPGMail.h"
 #import "MimeBody+GPGMail.h"
 #import "NSString+GPGMail.h"
@@ -629,7 +630,7 @@
     }
     else if([self hasError:@"NO_ARMORED_DATA" noDataErrors:noDataErrors] || 
             [self hasError:@"INVALID_PACKET" noDataErrors:noDataErrors] || 
-            [self isCorruptedInputException:(GPGException *)operationError]) {
+            [(GPGException *)operationError isCorruptedInputError]) {
         titleKey = [NSString stringWithFormat:@"%@_DECRYPT_CORRUPTED_DATA_ERROR_TITLE", prefix];
         messageKey = [NSString stringWithFormat:@"%@_DECRYPT_CORRUPTED_DATA_ERROR_MESSAGE", prefix];
         
@@ -655,18 +656,6 @@
     [userInfo release];
     
     return error;
-}
-
-- (BOOL)isCorruptedInputException:(GPGException *)error {
-    switch (error.errorCode) {
-        case GPGErrorUnknownPacket:
-        case GPGErrorChecksumError:
-        case GPGErrorInvalidPacket:
-        case GPGErrorInvalidArmor:
-            return TRUE;
-        default:
-            return FALSE;
-    }
 }
 
 - (MFError *)errorFromVerificationOperation:(GPGController *)gpgc {
