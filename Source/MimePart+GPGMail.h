@@ -345,5 +345,10 @@ typedef enum {
  */
 - (void)failedToSignForSender:(NSString *)sender gpgErrorCode:(GPGErrorCode)errorCode;
 
+/**
+ Determine if errorCode qualifies for localized "corrupted message" 
+ */
+- (BOOL)isCorruptedInputException:(GPGException *)error;
+
 @end
 
