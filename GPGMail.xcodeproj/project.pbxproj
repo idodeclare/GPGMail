@@ -3272,7 +3272,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT\"\nsource \"Makefile.config\"\n\nBuildNumber=\"$(($(date +\"%s\") / 3600 - 262968))\"\nCommitHash=\"$(git rev-parse --short HEAD)\"\nCFBundleVersion=\"$BuildNumber${PRERELEASE_VERSION:+ ($PRERELEASE_VERSION)}\"\nCFBundleShortVersionString=\"${version}\"\n\ncd \"$BUILT_PRODUCTS_DIR\"\nPLIST=\"$PWD/${INFOPLIST_PATH%.plist}\"\n\ndefaults write \"$PLIST\" CommitHash \"\\\"$CommitHash\\\"\"\ndefaults write \"$PLIST\" BuildNumber \"\\\"$BuildNumber\\\"\"\ndefaults write \"$PLIST\" CFBundleVersion \"\\\"$CFBundleVersion\\\"\"\ndefaults write \"$PLIST\" CFBundleShortVersionString \"\\\"$CFBundleShortVersionString\\\"\"\n";
+			shellScript = "cd \"$SRCROOT\"\nsource \"Makefile.config\"\n\nBuildNumber=\"$(($(date +\"%s\") / 3600 - 262968))\"\nCommitHash=\"$(git rev-parse --short HEAD)\"\nCFBundleVersion=\"$BuildNumber${PRERELEASE_VERSION:+ ($PRERELEASE_VERSION)}\"\nCFBundleShortVersionString=\"${version}\"\n\ncd \"$BUILT_PRODUCTS_DIR\"\nPLIST=\"$PWD/${INFOPLIST_PATH%.plist}\"\n\ndefaults write \"$PLIST\" CommitHash \"\\\"$CommitHash\\\"\"\ndefaults write \"$PLIST\" BuildNumber \"\\\"$BuildNumber\\\"\"\ndefaults write \"$PLIST\" CFBundleVersion \"\\\"$CFBundleVersion\\\"\"\ndefaults write \"$PLIST\" CFBundleShortVersionString \"\\\"$CFBundleShortVersionString\\\"\"\n\n";
 		};
 		30F151E21500BE8D00980642 /* Install GPGMail */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3667,10 +3667,10 @@
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = "Dependencies/**";
 				INFOPLIST_FILE = Resources/Info.plist;
+				INSTALL_GPGMAIL = 1;
 				INSTALL_PATH = "$(HOME)/Library/Mail/Bundles";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "$(LIBRARY_SEARCH_PATHS)";
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-force_flat_namespace",
@@ -3678,7 +3678,7 @@
 					suppress,
 				);
 				PRODUCT_NAME = GPGMail;
-				SYMLINK_GPGMAIL = 1;
+				SYMLINK_GPGMAIL = 0;
 				VALID_ARCHS = "x86_64 i386";
 				WRAPPER_EXTENSION = mailbundle;
 			};
@@ -3713,10 +3713,10 @@
 				GENERATE_PKGINFO_FILE = YES;
 				HEADER_SEARCH_PATHS = "Dependencies/**";
 				INFOPLIST_FILE = Resources/Info.plist;
+				INSTALL_GPGMAIL = 1;
 				INSTALL_PATH = "$(HOME)/Library/Mail/Bundles";
 				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "$(LIBRARY_SEARCH_PATHS)";
-				MACOSX_DEPLOYMENT_TARGET = 10.7;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-force_flat_namespace",
@@ -3724,7 +3724,7 @@
 					suppress,
 				);
 				PRODUCT_NAME = GPGMail;
-				SYMLINK_GPGMAIL = 1;
+				SYMLINK_GPGMAIL = 0;
 				VALID_ARCHS = "x86_64 i386";
 				WRAPPER_EXTENSION = mailbundle;
 			};
