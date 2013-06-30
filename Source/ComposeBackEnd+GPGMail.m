@@ -176,15 +176,9 @@
 			[self setIvar:@"cancelSaving" value:(id)kCFBooleanTrue];
 			[(MailDocumentEditor *)[(ComposeBackEnd *)self delegate] setUserSavedMessage:NO];
 			
-			
-			// Display "our" error message.
-			NSBundle *messagesFramework = [NSBundle bundleWithIdentifier:@"com.apple.MessageFramework"];
-			NSString *localizedDescription = [NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"SMIME_CANT_SIGN_MESSAGE", @"Delayed", messagesFramework, @""), [((ComposeBackEnd *)self).sender gpgNormalizedEmail]];
-			NSString *titleDescription = NSLocalizedStringFromTableInBundle(@"SMIME_CANT_SIGN_TITLE", @"Delayed", messagesFramework, @"");
-			MFError *error = [MFError errorWithDomain:@"MFMessageErrorDomain" code:1036 localizedDescription:nil title:titleDescription
-											  helpTag:nil userInfo:[NSDictionary dictionaryWithObjectsAndKeys:localizedDescription,
-																	@"NSLocalizedDescription", titleDescription, @"_MFShortDescription", nil]];
-
+			// The error message should be set on the current activity monitor, so we
+			// simply have to fetch it.
+			MFError *error = (MFError *)[(ActivityMonitor *)[ActivityMonitor currentMonitor] error];
 			[self performSelectorOnMainThread:@selector(didCancelMessageDeliveryForError:) withObject:error waitUntilDone:NO];
 		}
         return nil;
@@ -292,6 +286,7 @@
             [newBCCList addObject:[bcc flaggedStringWithFlag:@"recipientType" value:@"bcc"]];
 
         [newBCCList addObject:[[headers valueForKey:@"from"] flaggedStringWithFlag:@"recipientType" value:@"from"]];
+#warning In some weird cases the address doesn't get removed from BCC again.
         [headers setValue:newBCCList forKey:@"bcc"];
     }
 }
@@ -660,8 +655,7 @@
     [self removeIvar:@"EncryptIsPossible"];
     [self removeIvar:@"shouldSign"];
     [self removeIvar:@"shouldEncrypt"];
-    [self removeIvar:@"ForceEncrypt"];
-    [self removeIvar:@"ForceSign"];
+	// Don't reset ForceEncrypt and ForceSign. User preference has to stick. ALWAYS!
     
     // NEVER! automatically change the security method once the user selected it.
     // Only send the notification if security method is not reset to 0.
@@ -681,8 +675,8 @@
     [self removeIvar:@"EncryptIsPossible"];
     [self removeIvar:@"shouldSign"];
     [self removeIvar:@"shouldEncrypt"];
-    [self removeIvar:@"ForceEncrypt"];
-    [self removeIvar:@"ForceSign"];
+	
+	// Don't reset ForceEncrypt and ForceSign. User preference has to stick. ALWAYS!
 }
 
 - (GPGMAIL_SECURITY_METHOD)guessedSecurityMethod {

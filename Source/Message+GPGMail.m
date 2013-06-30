@@ -169,11 +169,15 @@
 				}
 			}
 		} else {
-			// For some reason a signature might not have an email set.
-			// This happens if the public key is not available (not downloaded or imported
-			// from the signature server yet). In that case, display the user id.
-			// Also, add an appropriate warning.
-			email = [NSString stringWithFormat:@"0x%@", [[signature fingerprint] shortKeyID]];
+            // Check if name is available and use that.
+            if([[signature name] length])
+                email = [signature name];
+            else
+                // For some reason a signature might not have an email set.
+                // This happens if the public key is not available (not downloaded or imported
+                // from the signature server yet). In that case, display the user id.
+                // Also, add an appropriate warning.
+                email = [NSString stringWithFormat:@"0x%@", [[signature fingerprint] shortKeyID]];
 		}
         [signerLabels addObject:email];
     }
@@ -187,6 +191,9 @@
 
 - (void)setPGPInfoCollected:(BOOL)infoCollected {
     [self setIvar:@"PGPInfoCollected" value:[NSNumber numberWithBool:infoCollected]];
+	// If infoCollected is set to NO, clear all associated info.
+	if(!infoCollected)
+		[self clearPGPInformation];
 }
 
 - (BOOL)PGPDecrypted {
@@ -205,14 +212,22 @@
     [self setIvar:@"PGPVerified" value:[NSNumber numberWithBool:isVerified]];
 }
 
+- (void)setShouldShowErrorBanner:(BOOL)shouldShow {
+    [self setIvar:@"ShouldShowErrorBanner" value:[NSNumber numberWithBool:shouldShow]];
+}
+
+- (BOOL)shouldShowErrorBanner {
+    return [[self getIvar:@"ShouldShowErrorBanner"] boolValue];
+}
+
 - (void)collectPGPInformationStartingWithMimePart:(MimePart *)topPart decryptedBody:(MimeBody *)decryptedBody {
     __block BOOL isEncrypted = NO;
     __block BOOL isSigned = NO;
     __block BOOL isPartlyEncrypted = NO;
     __block BOOL isPartlySigned = NO;
-    __block NSMutableArray *errors = [NSMutableArray array];
-    __block NSMutableArray *signatures = [NSMutableArray array];
-    __block NSMutableArray *pgpAttachments = [NSMutableArray array];
+    NSMutableArray *errors = [NSMutableArray array];
+    NSMutableArray *signatures = [NSMutableArray array];
+    NSMutableArray *pgpAttachments = [NSMutableArray array];
     __block BOOL isDecrypted = NO;
     __block BOOL isVerified = NO;
     __block NSUInteger numberOfAttachments = 0;
@@ -300,8 +315,11 @@
     else if([self.PGPAttachments count])
         error = [self errorSummaryForPGPAttachments:self.PGPAttachments];
     
-    [[ActivityMonitor currentMonitor] setError:error];
-    
+    if(error) {
+        self.shouldShowErrorBanner = YES;
+        [(ActivityMonitor *)[ActivityMonitor currentMonitor] setError:error];
+    }
+
     DebugLog(@"%@ Decrypted Message [%@]:\n\tisEncrypted: %@, isSigned: %@,\n\tisPartlyEncrypted: %@, isPartlySigned: %@\n\tsignatures: %@\n\terrors: %@",
           decryptedMessage, [decryptedMessage subject], decryptedMessage.PGPEncrypted ? @"YES" : @"NO", decryptedMessage.PGPSigned ? @"YES" : @"NO",
           decryptedMessage.PGPPartlyEncrypted ? @"YES" : @"NO", decryptedMessage.PGPPartlySigned ? @"YES" : @"NO", decryptedMessage.PGPSignatures, decryptedMessage.PGPErrors);
@@ -312,9 +330,9 @@
     
     // Fix the number of attachments, this time for real!
     // Uncomment once completely implemented.
-    [[self messageStore] setNumberOfAttachments:numberOfAttachments isSigned:isSigned isEncrypted:isEncrypted forMessage:self];
+    [[self dataSourceProxy] setNumberOfAttachments:numberOfAttachments isSigned:isSigned isEncrypted:isEncrypted forMessage:self];
     if(decryptedMessage)
-        [[decryptedMessage messageStore] setNumberOfAttachments:numberOfAttachments isSigned:isSigned isEncrypted:isEncrypted forMessage:decryptedMessage];
+        [[decryptedMessage dataSourceProxy] setNumberOfAttachments:numberOfAttachments isSigned:isSigned isEncrypted:isEncrypted forMessage:decryptedMessage];
     // Set PGP Info collected so this information is not overwritten.
     self.PGPInfoCollected = YES;
 }
@@ -390,7 +408,16 @@
 }
 
 - (void)clearPGPInformation {
-    [self removeIvars];
+    self.PGPSignatures = nil;
+	self.PGPEncrypted = NO;
+	self.PGPPartlyEncrypted = NO;
+	self.PGPSigned = NO;
+	self.PGPPartlySigned = NO;
+	self.PGPDecrypted = NO;
+	self.PGPVerified = NO;
+	self.PGPErrors = nil;
+	self.PGPAttachments = nil;
+	self.numberOfPGPAttachments = 0;
 }
 
 - (BOOL)shouldBePGPProcessed {
@@ -429,10 +456,17 @@
     
     // The message could be encrypted to multiple subkeys.
     // At least one of the keys has to be in cache.
-    NSMutableArray *keyIDs = [[NSMutableArray alloc] initWithCapacity:0];
+    NSMutableSet *keyIDs = [[NSMutableSet alloc] initWithCapacity:0];
     
-    NSArray *packets = [GPGPacket packetsWithData:data];
-	
+    NSArray *packets = nil;
+    @try {
+        packets = [GPGPacket packetsWithData:data];
+    }
+    @catch (NSException *exception) {
+        [keyIDs release];
+        return NO;
+    }
+    
 	for (GPGPacket *packet in packets) {
 		if (packet.type == GPGPublicKeyEncryptedSessionKeyPacket)
             [keyIDs addObject:packet.keyID];
@@ -442,7 +476,7 @@
     GPGController *gpgc = [[GPGController alloc] init];
     
     for(NSString *keyID in keyIDs) {
-        GPGKey *key = [[[GPGMailBundle sharedInstance] publicGPGKeysByID] valueForKey:keyID];
+        GPGKey *key = [[[GPGMailBundle sharedInstance] secretGPGKeysByID] valueForKey:keyID];
         if(!key)
             continue;
         if([gpgc isPassphraseForKeyInCache:key]) {
@@ -457,5 +491,18 @@
     
     return passphraseInCache;
 }
+
+#pragma mark - Proxies for OS X version differences.
+
+- (id)dataSourceProxy {
+    // 10.8 uses dataSource, 10.7 uses messageStore.
+    if([self respondsToSelector:@selector(dataSource)])
+        return [self dataSource];
+    if([self respondsToSelector:@selector(messageStore)])
+       return [self messageStore];
+    
+    return nil;
+}
+
 
 @end

@@ -6,6 +6,7 @@
 //  Copyright (c) 2011 __MyCompanyName__. All rights reserved.
 //
 #define localized(key) [[NSBundle bundleForClass:[self class]] localizedStringForKey:(key) value:(key) table:@"SignatureView"]
+#define localizedAttachmentMessage(key) [[NSBundle bundleForClass:[self class]] localizedStringForKey:(key) value:(key) table:@"GPGAttachment"]
 
 #import "MimePart.h"
 #import "NSObject+LPDynamicIvars.h"
@@ -49,8 +50,8 @@
                 else if(decrypted) {
                     [attachment setValue:[NSNumber numberWithBool:YES] forKey:@"showSignatureView"];
                     [attachment setValue:[NSNumber numberWithBool:NO] forKey:@"showDecryptedNoSignatureView"];
-                    [attachment setValue:@"Der Anhang wurde erfolgreich entschlüsselt" forKey:@"decryptionSuccessTitle"];
-                    [attachment setValue:@"Doppelklicken Sie im Nachrichtenfenster auf eine Datei um diese zu öffnen." forKey:@"decryptionSuccessMessage"];
+                    [attachment setValue:localizedAttachmentMessage(@"ATTACHMENT_DECRYPTED_SUCCESSFULLY_TITLE") forKey:@"decryptionSuccessTitle"];
+                    [attachment setValue:localizedAttachmentMessage(@"ATTACHMENT_DECRYPTED_SUCCESSFULLY_MESSAGE") forKey:@"decryptionSuccessMessage"];
                 }
             }
             else {
@@ -240,8 +241,8 @@
 	static NSArray *images = nil;
 	if (!images) {
 		images = [[NSArray alloc] initWithObjects:
-				  [[[NSImage alloc] initWithContentsOfFile:@"/System/Library/Frameworks/SecurityInterface.framework/Resources/ValidBadge.tif"] autorelease],
-				  [[[NSImage alloc] initWithContentsOfFile:@"/System/Library/Frameworks/SecurityInterface.framework/Resources/InvalidBadge.tif"] autorelease],
+				  [[[NSImage alloc] initWithContentsOfFile:@"/System/Library/Frameworks/SecurityInterface.framework/Resources/ValidBadge.png"] autorelease],
+				  [[[NSImage alloc] initWithContentsOfFile:@"/System/Library/Frameworks/SecurityInterface.framework/Resources/InvalidBadge.png"] autorelease],
 				  nil];	
 	}
 	if (signature.status != 0 || signature.trust <= 1) {
@@ -253,12 +254,20 @@
 
 - (NSString *)emailAndID {
     
-    NSString *value = [NSString stringWithFormat:@"%@", gpgKey.email];
+    NSMutableString *value = [[NSMutableString alloc] init];
+    if(gpgKey.email)
+        [value appendFormat:@"%@", gpgKey.email];
+    
     NSString *keyID = [self keyID];
     if(keyID) {
-        value = [value stringByAppendingFormat:@" (%@)", keyID];
+        if(gpgKey.email)
+            [value appendString:@" ("];
+        [value appendFormat:@"%@", keyID];
+        if(gpgKey.email)
+            [value appendString:@")"];
     }
-    return value;
+    
+    return [value autorelease];
 }
 
 - (NSString *)validityDescription {
@@ -296,7 +305,7 @@
 	static NSArray *images = nil;
 	if (!images) {
 		images = [[NSArray alloc] initWithObjects: 
-				  [[[NSImage alloc] initWithContentsOfFile:@"/System/Library/Frameworks/SecurityInterface.framework/Resources/CertLargeStd.tif"] autorelease],
+				  [[[NSImage alloc] initWithContentsOfFile:@"/System/Library/Frameworks/SecurityInterface.framework/Resources/CertLargeStd.png"] autorelease],
 				  [[[NSImage alloc] initWithContentsOfFile:[[NSBundle bundleForClass:[self class]] pathForImageResource:@"GPGCertLargeNotTrusted"]] autorelease],
 				  nil];		
 	}
@@ -431,8 +440,21 @@
 }
 
 - (void)dealloc {
-    [super dealloc];
     [attachments release];
+    attachments = nil;
+    [attachmentIndexes release];
+    attachmentIndexes = nil;
+    [currentAttachment release];
+    currentAttachment = nil;
+    [signature release];
+    signature = nil;
+    [keyList release];
+    keyList = nil;
+    [gpgKey release];
+    gpgKey = nil;
+    
+    
+    [super dealloc];
 }
 
 @end

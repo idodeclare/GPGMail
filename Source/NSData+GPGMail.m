@@ -32,6 +32,7 @@
 #import <Libmacgpg/Libmacgpg.h>
 #import <NSString-NSStringUtils.h>
 #import "NSData+GPGMail.h"
+#import "NSData-MessageAdditions.h"
 
 @implementation NSData (GPGMail)
 
@@ -109,7 +110,10 @@
                                 PGP_MESSAGE_BEGIN, PGP_MESSAGE_END];
     RKRegex *sigRKRegex = [RKRegex regexWithRegexString:messageRegex options:RKCompileNoOptions];
     NSRange match = NSMakeRange(NSNotFound, 0);
-    @try {
+    if([self length] == 0)
+		return match;
+	
+	@try {
         match = [self rangeOfRegex:sigRKRegex];
     }
     @catch (NSException *exception) {
@@ -166,7 +170,13 @@
 - (BOOL)hasSignaturePacketsWithSignaturePacketsExpected:(BOOL)signaturePacketsExpected {
     NSData *packetData = [self copy];
     
-    NSArray *packets = [GPGPacket packetsWithData:packetData];
+    NSArray *packets = nil;
+    @try {
+        packets = [GPGPacket packetsWithData:packetData];
+    }
+    @catch (NSException *exception) {
+        return NO;
+    }
     
     // Parsing packets failed due to unsupported packets.
     if(![packets count]) {
@@ -185,6 +195,10 @@
     [packetData release];
     
     return hasSignature;
+}
+
+- (NSData *)dataPreparedForVerification {
+	return [[[NSData alloc] initWithDataConvertingLineEndingsFromUnixToNetwork:self] autorelease];
 }
 
 @end

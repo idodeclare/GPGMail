@@ -68,6 +68,8 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
     
     // Map which uses the email address to lookup a personal key.
     NSDictionary *_secretGPGKeysByEmail;
+	// Map which uses the key id to lookup a private key.
+	NSDictionary *_secretGPGKeysByID;
     // Map which uses the email address to lookup a public key.
     NSDictionary *_publicGPGKeysByEmail;
     // Map which uses the key id to lookup a public key.
@@ -87,6 +89,18 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
     
     NSMutableArray *_bundleImages;
 }
+
+/**
+ Checks for multiple installations of GPGMail.mailbundle in
+ all Library folders.
+ */
++ (NSArray *)multipleInstallations;
+
+/**
+ Warn the user that multiple installations were found and 
+ bail out.
+ */
++ (void)showMultipleInstallationsErrorAndExit:(NSArray *)installations;
 
 // Install all methods used by GPGMail.
 - (void)_installGPGMail;
@@ -115,6 +129,7 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
 @property (nonatomic, retain) NSSet *publicGPGKeys;
 @property (nonatomic, retain) NSDictionary *publicGPGKeysByEmail;
 @property (nonatomic, retain) NSDictionary *publicGPGKeysByID;
+@property (nonatomic, retain) NSDictionary *secretGPGKeysByID;
 @property (readonly, retain) NSSet *allGPGKeys;
 @property (readonly) GPGController *gpgc;
 
@@ -198,6 +213,11 @@ extern NSString *gpgErrorIdentifier; // This identifier is used to set and find 
  or keep them.
  */
 - (NSMutableDictionary *)emailMapForGPGKeys:(NSSet *)keys allowDuplicates:(BOOL)allowDuplicates;
+
+/**
+ Return if we're running on Mountain Lion or not.
+ */
++ (BOOL)isMountainLion;
 
 @end
 
